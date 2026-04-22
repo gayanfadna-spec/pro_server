@@ -26,9 +26,21 @@ app.use('/api/packing-grn', require('./routes/packingGRNRoutes'));
 app.use('/api/packing-issue-notes', require('./routes/packingIssueNoteRoutes'));
 app.use('/api/fg-transactions', require('./routes/fgTransactionRoutes'));
 
-app.get('/', (req, res) => {
-    res.send('API is running...');
-});
+const path = require('path');
+
+if (process.env.NODE_ENV === 'production') {
+    // If hosting frontend from the same server, serve the static files
+    app.use(express.static(path.join(__dirname, '../client/dist')));
+
+    // Catch-all route to serve the React index.html for all requests (fixes refresh 404s)
+    app.get('*', (req, res) => {
+        res.sendFile(path.resolve(__dirname, '../client/dist', 'index.html'));
+    });
+} else {
+    app.get('/', (req, res) => {
+        res.send('API is running...');
+    });
+}
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
