@@ -5,7 +5,7 @@ const PackingMaterial = require('../models/PackingMaterial');
 // @route   GET /api/packing-issue-notes
 const getPackingIssueNotes = async (req, res) => {
     try {
-        const notes = await PackingIssueNote.find({}).populate('items.material', 'name sku uom');
+        const notes = await PackingIssueNote.find({}).populate('items.material', 'name sku uom').sort({ updatedAt: -1 });
         res.json(notes);
     } catch (error) {
         res.status(500).json({ message: error.message });

@@ -5,7 +5,7 @@ const RawMaterial = require('../models/RawMaterial');
 // @route   GET /api/grn
 const getGRNs = async (req, res) => {
     try {
-        const grns = await GRN.find({}).populate('items.material', 'name sku');
+        const grns = await GRN.find({}).populate('items.material', 'name sku').sort({ updatedAt: -1 });
         res.json(grns);
     } catch (error) {
         res.status(500).json({ message: error.message });

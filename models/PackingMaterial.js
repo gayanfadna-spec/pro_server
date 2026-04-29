@@ -13,6 +13,7 @@ const packingMaterialSchema = new mongoose.Schema({
     uom: {
         type: String, // Unit of Measure
         required: true,
+        default: 'pcs',
     },
 
     currentQuantity: {

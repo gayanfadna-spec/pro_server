@@ -76,7 +76,7 @@ const logDispatch = async (req, res) => {
 // @route   GET /api/fg-transactions/production
 const getProductions = async (req, res) => {
     try {
-        const records = await FGProduction.find({}).populate('items.product', 'name sku');
+        const records = await FGProduction.find({}).populate('items.product', 'name sku').sort({ updatedAt: -1 });
         res.json(records);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -87,7 +87,7 @@ const getProductions = async (req, res) => {
 // @route   GET /api/fg-transactions/dispatch
 const getDispatches = async (req, res) => {
     try {
-        const records = await FGDispatch.find({}).populate('items.product', 'name sku');
+        const records = await FGDispatch.find({}).populate('items.product', 'name sku').sort({ updatedAt: -1 });
         res.json(records);
     } catch (error) {
         res.status(500).json({ message: error.message });

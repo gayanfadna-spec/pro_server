@@ -5,7 +5,7 @@ const RawMaterial = require('../models/RawMaterial');
 // @route   GET /api/issue-notes
 const getIssueNotes = async (req, res) => {
     try {
-        const notes = await IssueNote.find({}).populate('items.material', 'name sku');
+        const notes = await IssueNote.find({}).populate('items.material', 'name sku').sort({ updatedAt: -1 });
         res.json(notes);
     } catch (error) {
         res.status(500).json({ message: error.message });//

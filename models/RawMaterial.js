@@ -13,6 +13,7 @@ const rawMaterialSchema = new mongoose.Schema({
     uom: {
         type: String, // Unit of Measure
         required: true,
+        default: 'kg',
     },
 
     currentQuantity: {

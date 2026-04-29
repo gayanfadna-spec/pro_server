@@ -1,6 +1,7 @@
 const RawMaterial = require('../models/RawMaterial');
 const FinishedGood = require('../models/FinishedGood');
 const PackingMaterial = require('../models/PackingMaterial');
+const xlsx = require('xlsx');
 
 // === RAW MATERIALS ===
 
@@ -8,7 +9,7 @@ const PackingMaterial = require('../models/PackingMaterial');
 // @route   GET /api/inventory/raw-materials
 const getRawMaterials = async (req, res) => {
     try {
-        const materials = await RawMaterial.find({});
+        const materials = await RawMaterial.find({}).sort({ updatedAt: -1 });
         res.json(materials);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -59,7 +60,7 @@ const deleteRawMaterial = async (req, res) => {
 // @route   GET /api/inventory/packing-materials
 const getPackingMaterials = async (req, res) => {
     try {
-        const materials = await PackingMaterial.find({});
+        const materials = await PackingMaterial.find({}).sort({ updatedAt: -1 });
         res.json(materials);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -110,7 +111,7 @@ const deletePackingMaterial = async (req, res) => {
 // @route   GET /api/inventory/finished-goods
 const getFinishedGoods = async (req, res) => {
     try {
-        const goods = await FinishedGood.find({});
+        const goods = await FinishedGood.find({}).sort({ updatedAt: -1 });
         res.json(goods);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -181,6 +182,203 @@ const getDashboardStats = async (req, res) => {
     }
 };
 
+// @desc    Import raw materials from Excel
+// @route   POST /api/inventory/raw-materials/import
+const importRawMaterials = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'Please upload an excel file' });
+        }
+
+        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const data = xlsx.utils.sheet_to_json(sheet);
+
+        let updatedCount = 0;
+        let createdCount = 0;
+        let skippedCount = 0;
+
+        for (const row of data) {
+            // Normalize keys to lowercase for easier mapping
+            const normalizedRow = {};
+            Object.keys(row).forEach(key => {
+                normalizedRow[key.toLowerCase().trim()] = row[key];
+            });
+
+            const code = normalizedRow.code?.toString().trim();
+            const name = normalizedRow.name?.toString().trim();
+            const finalQty = normalizedRow.finalqty || normalizedRow.quantity || normalizedRow.qty || 0;
+            let uom = normalizedRow.uom?.toString().trim() || 'kg';
+            
+            // Force 'Unit' to 'kg' if found in the file
+            if (uom.toLowerCase() === 'unit') uom = 'kg';
+
+            if (!code || !name) {
+                skippedCount++;
+                continue;
+            }
+
+            const existingMaterial = await RawMaterial.findOne({ sku: code });
+
+            if (existingMaterial) {
+                existingMaterial.currentQuantity = Number(finalQty) || 0;
+                existingMaterial.name = name; 
+                existingMaterial.uom = uom; // Update UOM to file value or default 'kg'
+                await existingMaterial.save();
+                updatedCount++;
+            } else {
+                await RawMaterial.create({
+                    sku: code,
+                    name,
+                    currentQuantity: Number(finalQty) || 0,
+                    uom: uom,
+                });
+                createdCount++;
+            }
+        }
+
+        res.json({
+            message: 'Import completed successfully',
+            updatedCount,
+            createdCount,
+            skippedCount
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const importPackingMaterials = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'Please upload an excel file' });
+        }
+
+        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const data = xlsx.utils.sheet_to_json(sheet);
+
+        let updatedCount = 0;
+        let createdCount = 0;
+        let skippedCount = 0;
+
+        for (const row of data) {
+            const normalizedRow = {};
+            Object.keys(row).forEach(key => {
+                normalizedRow[key.toLowerCase().trim()] = row[key];
+            });
+
+            const code = normalizedRow.code?.toString().trim();
+            const name = normalizedRow.name?.toString().trim();
+            const finalQty = normalizedRow.finalqty || normalizedRow.quantity || normalizedRow.qty || 0;
+            let uom = normalizedRow.uom?.toString().trim() || 'pcs';
+            
+            if (uom.toLowerCase() === 'unit') uom = 'pcs';
+
+            if (!code || !name) {
+                skippedCount++;
+                continue;
+            }
+
+            const existingMaterial = await PackingMaterial.findOne({ sku: code });
+
+            if (existingMaterial) {
+                existingMaterial.currentQuantity = Number(finalQty) || 0;
+                existingMaterial.name = name; 
+                existingMaterial.uom = uom;
+                await existingMaterial.save();
+                updatedCount++;
+            } else {
+                await PackingMaterial.create({
+                    sku: code,
+                    name,
+                    currentQuantity: Number(finalQty) || 0,
+                    uom: uom,
+                });
+                createdCount++;
+            }
+        }
+
+        res.json({
+            message: 'Import completed successfully',
+            updatedCount,
+            createdCount,
+            skippedCount
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const importFinishedGoods = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'Please upload an excel file' });
+        }
+
+        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const data = xlsx.utils.sheet_to_json(sheet);
+
+        let updatedCount = 0;
+        let createdCount = 0;
+        let skippedCount = 0;
+
+        for (const row of data) {
+            const normalizedRow = {};
+            Object.keys(row).forEach(key => {
+                normalizedRow[key.toLowerCase().trim()] = row[key];
+            });
+
+            const code = normalizedRow.code?.toString().trim();
+            const name = normalizedRow.name?.toString().trim();
+            const category = normalizedRow.category?.toString().trim() || 'General';
+            const price = normalizedRow.price || normalizedRow.unitprice || 0;
+            const finalQty = normalizedRow.finalqty || normalizedRow.quantity || normalizedRow.qty || 0;
+            const minStock = normalizedRow.minstock || normalizedRow.minqty || 0;
+
+            if (!code || !name) {
+                skippedCount++;
+                continue;
+            }
+
+            const existingGood = await FinishedGood.findOne({ sku: code });
+
+            if (existingGood) {
+                existingGood.currentQuantity = Number(finalQty) || 0;
+                existingGood.name = name; 
+                existingGood.category = category;
+                existingGood.unitPrice = Number(price) || existingGood.unitPrice;
+                existingGood.minStockQty = Number(minStock) || existingGood.minStockQty;
+                await existingGood.save();
+                updatedCount++;
+            } else {
+                await FinishedGood.create({
+                    sku: code,
+                    name,
+                    category,
+                    unitPrice: Number(price) || 0,
+                    currentQuantity: Number(finalQty) || 0,
+                    minStockQty: Number(minStock) || 0
+                });
+                createdCount++;
+            }
+        }
+
+        res.json({
+            message: 'Import completed successfully',
+            updatedCount,
+            createdCount,
+            skippedCount
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getRawMaterials,
     createRawMaterial,
@@ -194,5 +392,8 @@ module.exports = {
     getPackingMaterials,
     createPackingMaterial,
     updatePackingMaterial,
-    deletePackingMaterial
+    deletePackingMaterial,
+    importRawMaterials,
+    importPackingMaterials,
+    importFinishedGoods
 };

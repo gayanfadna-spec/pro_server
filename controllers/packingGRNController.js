@@ -5,7 +5,7 @@ const PackingMaterial = require('../models/PackingMaterial');
 // @route   GET /api/packing-grn
 const getPackingGRNs = async (req, res) => {
     try {
-        const grns = await PackingGRN.find({}).populate('items.material', 'name sku uom');
+        const grns = await PackingGRN.find({}).populate('items.material', 'name sku uom').sort({ updatedAt: -1 });
         res.json(grns);
     } catch (error) {
         res.status(500).json({ message: error.message });
